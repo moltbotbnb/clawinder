@@ -57,6 +57,10 @@ def api_info():
     }
 
 
+# Initialize database at module load time as backup
+init_db()
+
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
