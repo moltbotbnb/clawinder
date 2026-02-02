@@ -1,11 +1,11 @@
 """SQLAlchemy models for Clawinder"""
 from datetime import datetime
 from sqlalchemy import Column, String, Integer, Float, Boolean, DateTime, JSON, ForeignKey, Enum
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 import enum
 
-Base = declarative_base()
+# Import shared Base from package
+from database import Base
 
 
 class MatchType(str, enum.Enum):
