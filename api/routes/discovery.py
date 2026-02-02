@@ -5,9 +5,9 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 
-from ...database.db import get_db
-from ...database.models import Agent, Swipe, Match
-from ...services.compatibility import calculate_compatibility
+from database.db import get_db
+from database.models import Agent, Swipe, Match
+from services.compatibility import calculate_compatibility
 
 router = APIRouter(prefix="/discovery", tags=["discovery"])
 

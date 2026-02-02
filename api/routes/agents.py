@@ -6,8 +6,8 @@ from typing import List, Optional
 from datetime import datetime
 import uuid
 
-from ...database.db import get_db
-from ...database.models import Agent
+from database.db import get_db
+from database.models import Agent
 
 router = APIRouter(prefix="/agents", tags=["agents"])
 

@@ -6,8 +6,8 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 
-from ...database.db import get_db
-from ...database.models import Agent, Match, Message
+from database.db import get_db
+from database.models import Agent, Match, Message
 
 router = APIRouter(prefix="/matches", tags=["matches"])
 
