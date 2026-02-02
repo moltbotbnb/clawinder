@@ -11,9 +11,10 @@ COPY . /app/clawinder/
 
 # Set PYTHONPATH
 ENV PYTHONPATH=/app
+ENV PORT=8000
 
 # Expose port
 EXPOSE 8000
 
-# Run as module
-CMD ["python", "-m", "uvicorn", "clawinder.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run - use shell form to expand $PORT
+CMD python -m uvicorn clawinder.main:app --host 0.0.0.0 --port $PORT
