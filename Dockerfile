@@ -6,11 +6,14 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy app
-COPY . .
+# Copy app as a package
+COPY . /app/clawinder/
+
+# Set PYTHONPATH
+ENV PYTHONPATH=/app
 
 # Expose port
 EXPOSE 8000
 
-# Run
-CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run as module
+CMD ["python", "-m", "uvicorn", "clawinder.main:app", "--host", "0.0.0.0", "--port", "8000"]
