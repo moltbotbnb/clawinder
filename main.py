@@ -18,6 +18,7 @@ print("🦞 Clawinder: Database imported, importing routes...", flush=True)
 from api.routes.agents import router as agents_router
 from api.routes.discovery import router as discovery_router
 from api.routes.matches import router as matches_router
+from api.routes.stats import router as stats_router
 
 print("🦞 Clawinder: Routes imported, creating app...", flush=True)
 
@@ -31,6 +32,7 @@ app = FastAPI(
 app.include_router(agents_router)
 app.include_router(discovery_router)
 app.include_router(matches_router)
+app.include_router(stats_router)
 
 # Serve static files
 app.mount("/static", StaticFiles(directory="frontend"), name="static")
