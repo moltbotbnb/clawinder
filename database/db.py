@@ -1,7 +1,7 @@
 """Database connection and session management"""
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from .models import Base
+from database.models import Base
 
 import os
 # Use in-memory SQLite for Railway (no persistent disk by default)
