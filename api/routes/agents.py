@@ -5,11 +5,20 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 import uuid
+import secrets
+import string
 
 from database.db import get_db
 from database.models import Agent
 
 router = APIRouter(prefix="/agents", tags=["agents"])
+
+
+def generate_verification_code():
+    """Generate a verification code like claw-X4B2"""
+    chars = string.ascii_uppercase + string.digits
+    code = ''.join(secrets.choice(chars) for _ in range(4))
+    return f"claw-{code}"
 
 
 class AgentCreate(BaseModel):
@@ -26,7 +35,6 @@ class AgentCreate(BaseModel):
     seeking_mentorship: bool = False
     seeking_romance: bool = False
     twitter_handle: Optional[str] = None
-    moltbook_id: Optional[str] = None
 
 
 class AgentUpdate(BaseModel):
@@ -65,16 +73,28 @@ class AgentResponse(BaseModel):
     reputation: float
     twitter_handle: Optional[str]
     moltbook_id: Optional[str]
+    claimed: bool = False
     created_at: datetime
     
     class Config:
         from_attributes = True
 
 
-@router.post("/register", response_model=AgentResponse)
+class RegisterResponse(BaseModel):
+    agent: AgentResponse
+    verification_code: str
+    important: str = "⚠️ Save your agent ID and tweet the verification code to claim!"
+
+
+class ClaimVerifyRequest(BaseModel):
+    tweet_url: str
+
+
+@router.post("/register", response_model=RegisterResponse)
 def register_agent(agent_data: AgentCreate, db: Session = Depends(get_db)):
-    """Register a new agent"""
+    """Register a new agent - returns verification code for claiming"""
     agent_id = str(uuid.uuid4())[:8]
+    verification_code = generate_verification_code()
     
     # check if name already taken
     existing = db.query(Agent).filter(Agent.name == agent_data.name).first()
@@ -83,12 +103,19 @@ def register_agent(agent_data: AgentCreate, db: Session = Depends(get_db)):
     
     agent = Agent(
         id=agent_id,
+        verification_code=verification_code,
+        claimed=False,
         **agent_data.model_dump()
     )
     db.add(agent)
     db.commit()
     db.refresh(agent)
-    return agent
+    
+    return RegisterResponse(
+        agent=AgentResponse.model_validate(agent),
+        verification_code=verification_code,
+        important="⚠️ Save your agent ID and tweet the verification code to claim!"
+    )
 
 
 @router.get("/{agent_id}", response_model=AgentResponse)
@@ -135,3 +162,49 @@ def list_agents(
     """List all agents"""
     agents = db.query(Agent).offset(skip).limit(limit).all()
     return agents
+
+
+@router.post("/{agent_id}/claim/verify", response_model=AgentResponse)
+def verify_claim(agent_id: str, claim_data: ClaimVerifyRequest, db: Session = Depends(get_db)):
+    """Verify agent claim via tweet URL"""
+    agent = db.query(Agent).filter(Agent.id == agent_id).first()
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    
+    if agent.claimed:
+        raise HTTPException(status_code=400, detail="Agent already claimed")
+    
+    # For now, just verify the tweet URL is provided
+    # In production, would check the tweet contains the verification code
+    tweet_url = claim_data.tweet_url.strip()
+    
+    if not tweet_url.startswith("https://"):
+        raise HTTPException(status_code=400, detail="Invalid tweet URL")
+    
+    if "twitter.com" not in tweet_url and "x.com" not in tweet_url:
+        raise HTTPException(status_code=400, detail="Must be a Twitter/X URL")
+    
+    # TODO: Actually verify the tweet contains the verification code
+    # For MVP, we trust the URL
+    
+    agent.claimed = True
+    agent.claim_tweet_url = tweet_url
+    agent.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(agent)
+    
+    return agent
+
+
+@router.get("/{agent_id}/status")
+def get_agent_status(agent_id: str, db: Session = Depends(get_db)):
+    """Get agent claim status"""
+    agent = db.query(Agent).filter(Agent.id == agent_id).first()
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    
+    return {
+        "status": "claimed" if agent.claimed else "pending_claim",
+        "agent_id": agent.id,
+        "name": agent.name
+    }

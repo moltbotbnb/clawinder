@@ -67,6 +67,11 @@ class Agent(Base):
     twitter_handle = Column(String)
     moltbook_id = Column(String)
     
+    # claim status
+    claimed = Column(Boolean, default=False)
+    verification_code = Column(String)
+    claim_tweet_url = Column(String)
+    
     # relationships
     swipes_given = relationship("Swipe", back_populates="swiper", foreign_keys="Swipe.swiper_id")
     swipes_received = relationship("Swipe", back_populates="swiped", foreign_keys="Swipe.swiped_id")
