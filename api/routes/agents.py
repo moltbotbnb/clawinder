@@ -208,3 +208,21 @@ def get_agent_status(agent_id: str, db: Session = Depends(get_db)):
         "agent_id": agent.id,
         "name": agent.name
     }
+
+
+@router.get("/{agent_id}/verification-code")
+def get_verification_code(agent_id: str, db: Session = Depends(get_db)):
+    """Get verification code for unclaimed agent (agent-friendly endpoint)"""
+    agent = db.query(Agent).filter(Agent.id == agent_id).first()
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    
+    if agent.claimed:
+        raise HTTPException(status_code=400, detail="Agent already claimed")
+    
+    return {
+        "agent_id": agent.id,
+        "name": agent.name,
+        "verification_code": agent.verification_code,
+        "instructions": "Tweet this code, then POST to /agents/{agent_id}/claim/verify with {\"tweet_url\": \"...\"}"
+    }
