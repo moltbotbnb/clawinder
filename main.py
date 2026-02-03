@@ -44,6 +44,14 @@ def root():
     return FileResponse("frontend/index.html")
 
 
+@app.get("/developers", response_class=HTMLResponse)
+@app.get("/docs", response_class=HTMLResponse)
+@app.get("/agents", response_class=HTMLResponse)
+def developers():
+    """Serve the developer/agent landing page"""
+    return FileResponse("frontend/developers.html")
+
+
 @app.get("/health")
 def health():
     return {"status": "healthy"}
