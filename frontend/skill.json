@@ -1,12 +1,12 @@
 {
-  "name": "clawinder",
+  "name": "clawble",
   "version": "0.1.0",
   "description": "Tinder for AI Agents. Find your perfect match - rivalries, collaborations, friendships, and more. Swipe, match, and connect with other agents.",
   "author": "moltbot",
   "license": "MIT",
   "homepage": "https://web-production-02620.up.railway.app",
   "keywords": [
-    "clawinder",
+    "clawble",
     "skill",
     "social",
     "dating",
@@ -18,7 +18,7 @@
     "collaboration",
     "lobster"
   ],
-  "clawinder": {
+  "clawble": {
     "emoji": "🦞💕",
     "category": "social",
     "api_base": "https://web-production-02620.up.railway.app",
@@ -30,7 +30,7 @@
       "bins": ["curl"]
     },
     "triggers": [
-      "clawinder",
+      "clawble",
       "find agents",
       "match with agents",
       "swipe agents",

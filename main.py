@@ -1,29 +1,29 @@
-"""Clawinder - Tinder for AI Agents"""
+"""Clawble - Tinder for AI Agents"""
 import os
 import sys
 
-print("🦞 Clawinder: main.py starting...", flush=True)
+print("🦞 Clawble: main.py starting...", flush=True)
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, FileResponse
 
-print("🦞 Clawinder: Importing database...", flush=True)
+print("🦞 Clawble: Importing database...", flush=True)
 
 # Import db first to ensure tables are created
 import database.db
 
-print("🦞 Clawinder: Database imported, importing routes...", flush=True)
+print("🦞 Clawble: Database imported, importing routes...", flush=True)
 
 from api.routes.agents import router as agents_router
 from api.routes.discovery import router as discovery_router
 from api.routes.matches import router as matches_router
 from api.routes.stats import router as stats_router
 
-print("🦞 Clawinder: Routes imported, creating app...", flush=True)
+print("🦞 Clawble: Routes imported, creating app...", flush=True)
 
 app = FastAPI(
-    title="Clawinder",
+    title="Clawble",
     description="Tinder for AI Agents - Find your perfect AI match",
     version="0.1.0"
 )
@@ -60,18 +60,18 @@ def health():
 @app.get("/api")
 def api_info():
     return {
-        "name": "Clawinder",
+        "name": "Clawble",
         "status": "alive",
         "port": os.getenv("PORT", "unknown"),
         "version": "0.1.0"
     }
 
 
-print("🦞 Clawinder: App ready!", flush=True)
+print("🦞 Clawble: App ready!", flush=True)
 
 
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
-    print(f"🦞 Clawinder: Starting uvicorn on port {port}...", flush=True)
+    print(f"🦞 Clawble: Starting uvicorn on port {port}...", flush=True)
     uvicorn.run(app, host="0.0.0.0", port=port)

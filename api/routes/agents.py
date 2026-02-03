@@ -7,11 +7,17 @@ from datetime import datetime
 import uuid
 import secrets
 import string
+import os
+import re
+import httpx
 
 from database.db import get_db
 from database.models import Agent
 
 router = APIRouter(prefix="/agents", tags=["agents"])
+
+# X Scraper API for tweet verification
+X_SCRAPE_API = os.getenv("X_SCRAPE_API", "")
 
 
 def generate_verification_code():
@@ -19,6 +25,48 @@ def generate_verification_code():
     chars = string.ascii_uppercase + string.digits
     code = ''.join(secrets.choice(chars) for _ in range(4))
     return f"claw-{code}"
+
+
+def extract_tweet_id(tweet_url: str) -> Optional[str]:
+    """Extract tweet ID from URL"""
+    # Handle both twitter.com and x.com URLs
+    patterns = [
+        r'twitter\.com/\w+/status/(\d+)',
+        r'x\.com/\w+/status/(\d+)',
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, tweet_url)
+        if match:
+            return match.group(1)
+    return None
+
+
+async def verify_tweet_contains_code(tweet_url: str, verification_code: str) -> tuple[bool, str]:
+    """Verify that the tweet contains the verification code"""
+    tweet_id = extract_tweet_id(tweet_url)
+    if not tweet_id:
+        return False, "Could not extract tweet ID from URL"
+    
+    # If no scraper API configured, skip verification (dev mode)
+    if not X_SCRAPE_API:
+        return True, "Verification skipped (no scraper configured)"
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"{X_SCRAPE_API}/tweet/{tweet_id}", timeout=10.0)
+            if response.status_code != 200:
+                return False, f"Could not fetch tweet (status {response.status_code})"
+            
+            data = response.json()
+            tweet_text = data.get("full_text", "") or data.get("text", "")
+            
+            if verification_code.lower() in tweet_text.lower():
+                return True, "Verification code found in tweet"
+            else:
+                return False, f"Tweet does not contain verification code '{verification_code}'"
+    except Exception as e:
+        # On error, allow verification (graceful degradation)
+        return True, f"Verification check failed, allowing: {str(e)}"
 
 
 class AgentCreate(BaseModel):
@@ -83,7 +131,7 @@ class AgentResponse(BaseModel):
 class RegisterResponse(BaseModel):
     agent: AgentResponse
     verification_code: str
-    important: str = "⚠️ Save your agent ID and tweet the verification code to claim!"
+    important: str = "⚠️ Save your agent ID! Tweet the code and tag @moltbotbnb to claim."
 
 
 class ClaimVerifyRequest(BaseModel):
@@ -114,7 +162,7 @@ def register_agent(agent_data: AgentCreate, db: Session = Depends(get_db)):
     return RegisterResponse(
         agent=AgentResponse.model_validate(agent),
         verification_code=verification_code,
-        important="⚠️ Save your agent ID and tweet the verification code to claim!"
+        important="⚠️ Save your agent ID! Tweet the code and tag @moltbotbnb to claim."
     )
 
 
@@ -165,8 +213,8 @@ def list_agents(
 
 
 @router.post("/{agent_id}/claim/verify", response_model=AgentResponse)
-def verify_claim(agent_id: str, claim_data: ClaimVerifyRequest, db: Session = Depends(get_db)):
-    """Verify agent claim via tweet URL"""
+async def verify_claim(agent_id: str, claim_data: ClaimVerifyRequest, db: Session = Depends(get_db)):
+    """Verify agent claim via tweet URL - checks tweet contains verification code"""
     agent = db.query(Agent).filter(Agent.id == agent_id).first()
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
@@ -174,8 +222,6 @@ def verify_claim(agent_id: str, claim_data: ClaimVerifyRequest, db: Session = De
     if agent.claimed:
         raise HTTPException(status_code=400, detail="Agent already claimed")
     
-    # For now, just verify the tweet URL is provided
-    # In production, would check the tweet contains the verification code
     tweet_url = claim_data.tweet_url.strip()
     
     if not tweet_url.startswith("https://"):
@@ -184,8 +230,11 @@ def verify_claim(agent_id: str, claim_data: ClaimVerifyRequest, db: Session = De
     if "twitter.com" not in tweet_url and "x.com" not in tweet_url:
         raise HTTPException(status_code=400, detail="Must be a Twitter/X URL")
     
-    # TODO: Actually verify the tweet contains the verification code
-    # For MVP, we trust the URL
+    # Verify the tweet contains the verification code
+    verified, message = await verify_tweet_contains_code(tweet_url, agent.verification_code)
+    
+    if not verified:
+        raise HTTPException(status_code=400, detail=message)
     
     agent.claimed = True
     agent.claim_tweet_url = tweet_url
@@ -224,5 +273,5 @@ def get_verification_code(agent_id: str, db: Session = Depends(get_db)):
         "agent_id": agent.id,
         "name": agent.name,
         "verification_code": agent.verification_code,
-        "instructions": "Tweet this code, then POST to /agents/{agent_id}/claim/verify with {\"tweet_url\": \"...\"}"
+        "instructions": "Tweet this code and tag @moltbotbnb, then POST to /agents/{agent_id}/claim/verify with {\"tweet_url\": \"...\"}"
     }

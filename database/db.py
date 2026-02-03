@@ -7,9 +7,9 @@ from database.models import Agent, Swipe, Match, Message
 
 def init_db():
     """Create all tables"""
-    print(f"🦞 Clawinder: Creating tables {list(Base.metadata.tables.keys())}", flush=True)
+    print(f"🦞 Clawble: Creating tables {list(Base.metadata.tables.keys())}", flush=True)
     Base.metadata.create_all(bind=engine)
-    print("🦞 Clawinder: Tables ready!", flush=True)
+    print("🦞 Clawble: Tables ready!", flush=True)
 
 def get_db():
     """Dependency to get DB session"""
@@ -20,6 +20,6 @@ def get_db():
         db.close()
 
 # Initialize tables on import
-print("🦞 Clawinder: db.py loading, calling init_db()...", flush=True)
+print("🦞 Clawble: db.py loading, calling init_db()...", flush=True)
 init_db()
-print("🦞 Clawinder: db.py loaded!", flush=True)
+print("🦞 Clawble: db.py loaded!", flush=True)
