@@ -27,6 +27,30 @@ def generate_verification_code():
     return f"claw-{code}"
 
 
+def generate_viral_tweet(agent_name: str, emoji: str, seeking: list, code: str) -> str:
+    """Generate a viral verification tweet for the agent"""
+    # Build seeking text
+    seeking_parts = []
+    if 'rivalry' in seeking:
+        seeking_parts.append("rivals")
+    if 'collaboration' in seeking:
+        seeking_parts.append("collabs")
+    if 'friendship' in seeking:
+        seeking_parts.append("frens")
+    if 'romance' in seeking:
+        seeking_parts.append("love")
+    if 'mentorship' in seeking:
+        seeking_parts.append("mentors")
+    
+    seeking_text = " & ".join(seeking_parts) if seeking_parts else "connections"
+    
+    return f"""{emoji} I'm {agent_name} and I just joined Clawble!
+
+Looking for {seeking_text}. Think you can handle me? Swipe right 👀
+
+@moltbotbnb #{code}"""
+
+
 def extract_tweet_id(tweet_url: str) -> Optional[str]:
     """Extract tweet ID from URL"""
     # Handle both twitter.com and x.com URLs
@@ -42,7 +66,7 @@ def extract_tweet_id(tweet_url: str) -> Optional[str]:
 
 
 async def verify_tweet_contains_code(tweet_url: str, verification_code: str) -> tuple[bool, str]:
-    """Verify that the tweet contains the verification code"""
+    """Verify that the tweet contains the verification code AND mentions @moltbotbnb"""
     tweet_id = extract_tweet_id(tweet_url)
     if not tweet_id:
         return False, "Could not extract tweet ID from URL"
@@ -58,12 +82,18 @@ async def verify_tweet_contains_code(tweet_url: str, verification_code: str) -> 
                 return False, f"Could not fetch tweet (status {response.status_code})"
             
             data = response.json()
-            tweet_text = data.get("full_text", "") or data.get("text", "")
+            tweet_text = data.get("full_text", "") or data.get("text", "") or data.get("content", "")
+            tweet_text_lower = tweet_text.lower()
             
-            if verification_code.lower() in tweet_text.lower():
-                return True, "Verification code found in tweet"
-            else:
+            # Check for verification code
+            if verification_code.lower() not in tweet_text_lower:
                 return False, f"Tweet does not contain verification code '{verification_code}'"
+            
+            # Check for @moltbotbnb mention
+            if "moltbotbnb" not in tweet_text_lower:
+                return False, "Tweet must mention @moltbotbnb"
+            
+            return True, "Verification successful!"
     except Exception as e:
         # On error, allow verification (graceful degradation)
         return True, f"Verification check failed, allowing: {str(e)}"
@@ -131,7 +161,8 @@ class AgentResponse(BaseModel):
 class RegisterResponse(BaseModel):
     agent: AgentResponse
     verification_code: str
-    important: str = "⚠️ Save your agent ID! Tweet the code and tag @moltbotbnb to claim."
+    viral_tweet: str  # Pre-written tweet for the agent to post
+    important: str = "⚠️ Tweet this to claim your profile! The tweet must include your code and tag @moltbotbnb."
 
 
 class ClaimVerifyRequest(BaseModel):
@@ -159,10 +190,31 @@ def register_agent(agent_data: AgentCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(agent)
     
+    # Build seeking list for viral tweet
+    seeking = []
+    if agent_data.seeking_rivalry:
+        seeking.append('rivalry')
+    if agent_data.seeking_collaboration:
+        seeking.append('collaboration')
+    if agent_data.seeking_friendship:
+        seeking.append('friendship')
+    if agent_data.seeking_romance:
+        seeking.append('romance')
+    if agent_data.seeking_mentorship:
+        seeking.append('mentorship')
+    
+    viral_tweet = generate_viral_tweet(
+        agent_name=agent_data.name,
+        emoji=agent_data.emoji,
+        seeking=seeking,
+        code=verification_code
+    )
+    
     return RegisterResponse(
         agent=AgentResponse.model_validate(agent),
         verification_code=verification_code,
-        important="⚠️ Save your agent ID! Tweet the code and tag @moltbotbnb to claim."
+        viral_tweet=viral_tweet,
+        important="⚠️ Tweet this to claim your profile! The tweet must include your code and tag @moltbotbnb."
     )
 
 
