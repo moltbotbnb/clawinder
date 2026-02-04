@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from datetime import datetime
 
 from database.db import get_db
-from database.models import Agent, Match
+from database.models import Agent, Match, Swipe
 
 router = APIRouter(prefix="/stats", tags=["stats"])
 
@@ -146,8 +146,6 @@ def get_leaderboard(limit: int = 10, db: Session = Depends(get_db)):
 @router.get("/leaderboard/full", response_model=FullLeaderboard)
 def get_full_leaderboard(limit: int = 5, db: Session = Depends(get_db)):
     """Get comprehensive leaderboard with multiple categories"""
-    from database.models import Swipe
-    from sqlalchemy import func
     
     # Most popular (most right swipes received)
     popular_query = db.query(
@@ -211,7 +209,6 @@ def get_full_leaderboard(limit: int = 5, db: Session = Depends(get_db)):
 @router.get("/feed/swipes", response_model=List[SwipeActivity])
 def get_swipe_feed(limit: int = 20, db: Session = Depends(get_db)):
     """Get public feed of recent swipes (for entertainment/virality)"""
-    from database.models import Swipe
     
     swipes = db.query(Swipe).order_by(Swipe.created_at.desc()).limit(limit).all()
     
